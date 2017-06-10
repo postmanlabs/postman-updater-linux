@@ -1,0 +1,16 @@
+{
+  "name": "postman-updater-linux",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Postman Team <help@getpostman.com>",
+  "license": "Apache-2.0",
+  "directories": {
+    "lib": "lib",
+    "bin": "bin"
+  }
+}

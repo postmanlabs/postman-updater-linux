@@ -1,0 +1,161 @@
+#!/usr/bin/env bash
+
+# Set python's encoding.
+PYTHONIOENCODING=utf8;
+
+# Helper vars
+_TRUE_="true";
+_FALSE_="false";
+
+LOCATION="/opt/postman"  # Default install/update location
+VERSION="latest"  # Default to latest version
+
+function __debug {
+    if [[ ${PM_DEBUG} == "true" ]]; then
+        echo $@ >&2;
+    fi
+}
+
+function usage {
+    echo "Usage:";
+    echo "    postman-updater -h            Display this help message.";
+    echo "    postman-updater check         Check for updates.";
+    echo "    postman-updater update        Update to the latest version.";
+    echo "    postman-updater install       Install the latest version of Postman.";
+    exit 0;
+}
+
+function is_installed {
+    _IS_INS_LOCATION=$1;
+    _IS_INS_PKG_JSON_LOCATION=${_IS_INS_LOCATION}/resources/app/package.json;
+
+    __debug "Checking if Postman is already installed in location: " ${_IS_INS_LOCATION};
+
+    if [[ -f ${_IS_INS_PKG_JSON_LOCATION} ]]; then
+        __debug "Found an installation of Postman."
+        echo $_TRUE_;
+    else
+        __debug "Did not find a Postman installation."
+        echo $_FALSE_;
+    fi
+}
+
+function get_installed_version {
+    _GET_INS_VER_LOCATION=$1;
+    _GET_INS_VER_PKG_JSON_LOCATION=${_GET_INS_VER_LOCATION}/resources/app/package.json;
+
+    __debug "Fetching version of currently installed Postman from location: " ${_GET_INS_VER_LOCATION};
+
+    if [[ $(is_installed "${_GET_INS_VER_LOCATION}") == $_TRUE_ ]]; then
+        _GET_INS_VER_INSTALLED_VERSION=$(cat ${_GET_INS_VER_PKG_JSON_LOCATION} | python -c "import sys, json; print(json.load(sys.stdin)['version'])");
+        __debug "Postman is installed! The version is: " ${_GET_INS_VER_INSTALLED_VERSION};
+        echo ${_GET_INS_VER_INSTALLED_VERSION};
+    else
+        __debug "Cannot get installed version: Postman is not installed!";
+        echo "";
+    fi
+}
+
+function get_latest_version {
+    __debug "Fetching the latest version from Postman's app release server";
+    _GET_LAT_VER_VERSION=$(curl -s 'https://dl.pstmn.io/changelog?channel=stable&platform=linux' | python -c "import sys, json; print(json.load(sys.stdin)['changelog'][0]['name'])");
+    __debug "Latest version is: " ${_GET_LAT_VER_VERSION};
+    echo ${_GET_LAT_VER_VERSION};
+}
+
+function check_update {
+    # if installed, find out the installed version.
+    if [[ $(is_installed "${LOCATION}") == $_TRUE_ ]]; then
+        CU_INSTALLED_VERSION=$(get_installed_version "${LOCATION}");
+        CU_LATEST_VERSION=$(get_latest_version);
+        if [[ ${CU_LATEST_VERSION} != ${CU_INSTALLED_VERSION} ]]; then
+            echo "Update available!"
+            echo "    Latest version      : " ${CU_LATEST_VERSION};
+            echo "    Installed version   : " ${CU_INSTALLED_VERSION};
+        else
+            echo "Great, you have the latest version installed!";
+        fi
+    else
+        echo "No local installation of Postman found!";
+    fi
+}
+
+function get_current_arch {
+    if [ $(uname -m) == 'x86_64' ]; then
+        echo "64";
+    else
+        echo "32";
+    fi
+}
+
+
+function install_postman {
+    _UPD_PM_ARCH=$(get_current_arch);
+    _UPD_PM_TMP_DIR="/tmp/_postman_tmp";
+    _UPD_PM_DOWNLOADED_TAR_GZ="${_UPD_PM_TMP_DIR}/postman.tar.gz";
+    mkdir -p ${_UPD_PM_TMP_DIR};
+    curl -o "${_UPD_PM_DOWNLOADED_TAR_GZ}" "https://dl.pstmn.io/download/latest/linux?arch=${_UPD_PM_ARCH}";
+
+    _UPD_PM_RETURN=$(pwd);
+    cd ${_UPD_PM_TMP_DIR};
+    tar -xf ${_UPD_PM_DOWNLOADED_TAR_GZ};
+
+    # Make sure that the Postman executable is available in the extracted folder.
+    if [[ -x "${_UPD_PM_TMP_DIR}/Postman" ]]; then
+        mkdir -p ${LOCATION};
+
+        # remove the existing location
+        rm -r ${LOCATION};
+
+        # move the temporary directory to the actual location.
+        mv "${_UPD_PM_TMP_DIR}/Postman" ${LOCATION};
+    else
+        echo "Oops, we might have a corrupt archive downloaded. Aborting installation.";
+    fi
+
+}
+
+function update_postman {
+    if [[ $(is_installed "${LOCATION}") == $_FALSE_ ]]; then
+        echo "Postman is not installed in ${LOCATION}. No update can be performed.";
+    else
+        install_postman;
+    fi
+}
+
+
+# Parse options to the command
+while getopts ":h" opt; do
+    case ${opt} in
+        h )
+            usage;
+            ;;
+        \? )
+            echo "Invalid Option: -$OPTARG" 1>&2;
+            exit 1;
+            ;;
+    esac
+done
+shift $((OPTIND -1))
+
+SUB_CMD=$1; shift
+
+case "$SUB_CMD" in
+    check)
+        check_update;
+        ;;
+    update)
+        update_postman;
+        ;;
+    install)
+        install_postman;
+        ;;
+    "")
+        usage;
+        ;;
+    \? )
+        echo "Invalid Sub-Command: -$SUB_CMD" 1>&2;
+        usage;
+        exit 1;
+        ;;
+esac
