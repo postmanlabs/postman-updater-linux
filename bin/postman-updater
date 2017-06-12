@@ -12,7 +12,7 @@ VERSION="latest"  # Default to latest version
 
 function __debug {
     if [[ ${PM_DEBUG} == "true" ]]; then
-        echo $@ >&2;
+        echo "[*] [DEBUG] " $@ >&2;
     fi
 }
 
