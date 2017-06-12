@@ -18,38 +18,39 @@ function __debug {
 
 function usage {
     echo "Usage:";
-    echo "    postman-updater -h            Display this help message.";
-    echo "    postman-updater check         Check for updates.";
-    echo "    postman-updater update        Update to the latest version.";
-    echo "    postman-updater install       Install the latest version of Postman.";
+    echo "    postman-updater -h                                  Display this help message.";
+    echo "    postman-updater check [-l INSTALL_DIRECTORY]        Check for updates.";
+    echo "    postman-updater update [-l INSTALL_DIRECTORY]       Update to the latest version.";
+    echo "    postman-updater install [-l INSTALL_DIRECTORY]      Install the latest version of Postman.";
     exit 0;
 }
 
 function is_installed {
-    _IS_INS_LOCATION=$1;
-    _IS_INS_PKG_JSON_LOCATION=${_IS_INS_LOCATION}/resources/app/package.json;
+    local LOCATION=$1;
+    local PKG_JSON_LOCATION=${LOCATION}/resources/app/package.json;
 
-    __debug "Checking if Postman is already installed in location: " ${_IS_INS_LOCATION};
+    __debug "Checking if Postman is already installed in location: " ${LOCATION};
 
-    if [[ -f ${_IS_INS_PKG_JSON_LOCATION} ]]; then
+    if [[ -f ${PKG_JSON_LOCATION} ]]; then
         __debug "Found an installation of Postman."
-        echo $_TRUE_;
+        echo ${_TRUE_};
     else
         __debug "Did not find a Postman installation."
-        echo $_FALSE_;
+        echo ${_FALSE_};
     fi
 }
 
 function get_installed_version {
-    _GET_INS_VER_LOCATION=$1;
-    _GET_INS_VER_PKG_JSON_LOCATION=${_GET_INS_VER_LOCATION}/resources/app/package.json;
+    local LOCATION=$1;
+    local PKG_JSON_LOCATION=${LOCATION}/resources/app/package.json;
 
-    __debug "Fetching version of currently installed Postman from location: " ${_GET_INS_VER_LOCATION};
+    __debug "Fetching version of currently installed Postman from location: " ${LOCATION};
 
-    if [[ $(is_installed "${_GET_INS_VER_LOCATION}") == $_TRUE_ ]]; then
-        _GET_INS_VER_INSTALLED_VERSION=$(cat ${_GET_INS_VER_PKG_JSON_LOCATION} | python -c "import sys, json; print(json.load(sys.stdin)['version'])");
-        __debug "Postman is installed! The version is: " ${_GET_INS_VER_INSTALLED_VERSION};
-        echo ${_GET_INS_VER_INSTALLED_VERSION};
+    if [[ $(is_installed "${LOCATION}") == $_TRUE_ ]]; then
+        local INSTALLED_VERSION=$(cat ${PKG_JSON_LOCATION} | \
+            python -c "import sys, json; print(json.load(sys.stdin)['version'])");
+        __debug "Postman is installed! The version is: " ${INSTALLED_VERSION};
+        echo ${INSTALLED_VERSION};
     else
         __debug "Cannot get installed version: Postman is not installed!";
         echo "";
@@ -58,20 +59,21 @@ function get_installed_version {
 
 function get_latest_version {
     __debug "Fetching the latest version from Postman's app release server";
-    _GET_LAT_VER_VERSION=$(curl -s 'https://dl.pstmn.io/changelog?channel=stable&platform=linux' | python -c "import sys, json; print(json.load(sys.stdin)['changelog'][0]['name'])");
-    __debug "Latest version is: " ${_GET_LAT_VER_VERSION};
-    echo ${_GET_LAT_VER_VERSION};
+    LATEST_VERSION=$(curl -s 'https://dl.pstmn.io/changelog?channel=stable&platform=linux' | \
+        python -c "import sys, json; print(json.load(sys.stdin)['changelog'][0]['name'])");
+    __debug "Latest version is: " ${LATEST_VERSION};
+    echo ${LATEST_VERSION};
 }
 
 function check_update {
     # if installed, find out the installed version.
     if [[ $(is_installed "${LOCATION}") == $_TRUE_ ]]; then
-        CU_INSTALLED_VERSION=$(get_installed_version "${LOCATION}");
-        CU_LATEST_VERSION=$(get_latest_version);
-        if [[ ${CU_LATEST_VERSION} != ${CU_INSTALLED_VERSION} ]]; then
+        local INSTALLED_VERSION=$(get_installed_version "${LOCATION}");
+        local LATEST_VERSION=$(get_latest_version);
+        if [[ ${LATEST_VERSION} != ${INSTALLED_VERSION} ]]; then
             echo "Update available!"
-            echo "    Latest version      : " ${CU_LATEST_VERSION};
-            echo "    Installed version   : " ${CU_INSTALLED_VERSION};
+            echo "    Latest version      : " ${LATEST_VERSION};
+            echo "    Installed version   : " ${INSTALLED_VERSION};
         else
             echo "Great, you have the latest version installed!";
         fi
@@ -88,31 +90,29 @@ function get_current_arch {
     fi
 }
 
-
 function install_postman {
-    _UPD_PM_ARCH=$(get_current_arch);
-    _UPD_PM_TMP_DIR="/tmp/_postman_tmp";
-    _UPD_PM_DOWNLOADED_TAR_GZ="${_UPD_PM_TMP_DIR}/postman.tar.gz";
-    mkdir -p ${_UPD_PM_TMP_DIR};
-    curl -o "${_UPD_PM_DOWNLOADED_TAR_GZ}" "https://dl.pstmn.io/download/latest/linux?arch=${_UPD_PM_ARCH}";
+    local ARCH=$(get_current_arch);
+    local TMP_DIR="/tmp/_postman_tmp";
+    local TARBALL="${TMP_DIR}/postman.tar.gz";
+    mkdir -p ${TMP_DIR};
+    curl -o "${TARBALL}" "https://dl.pstmn.io/download/latest/linux?arch=${ARCH}";
 
     _UPD_PM_RETURN=$(pwd);
-    cd ${_UPD_PM_TMP_DIR};
-    tar -xf ${_UPD_PM_DOWNLOADED_TAR_GZ};
+    cd ${TMP_DIR};
+    tar -xf ${TARBALL};
 
     # Make sure that the Postman executable is available in the extracted folder.
-    if [[ -x "${_UPD_PM_TMP_DIR}/Postman" ]]; then
+    if [[ -x "${TMP_DIR}/Postman" ]]; then
         mkdir -p ${LOCATION};
 
         # remove the existing location
         rm -r ${LOCATION};
 
         # move the temporary directory to the actual location.
-        mv "${_UPD_PM_TMP_DIR}/Postman" ${LOCATION};
+        mv "${TMP_DIR}/Postman" ${LOCATION};
     else
         echo "Oops, we might have a corrupt archive downloaded. Aborting installation.";
     fi
-
 }
 
 function update_postman {
@@ -123,10 +123,21 @@ function update_postman {
     fi
 }
 
+function _parse_subcommand_opts {
+    local ALL_ARGS=$1;
+    __debug "Parsing subcommand opts," ${ALL_ARGS}
+    while getopts ":l:" SUB_OPT; do
+        case ${SUB_OPT} in
+            l )
+                LOCATION=${OPTARG};
+                ;;
+        esac
+    done
+}
 
 # Parse options to the command
-while getopts ":h" opt; do
-    case ${opt} in
+while getopts ":h" OPTION; do
+    case ${OPTION} in
         h )
             usage;
             ;;
@@ -138,7 +149,11 @@ while getopts ":h" opt; do
 done
 shift $((OPTIND -1))
 
-SUB_CMD=$1; shift
+# Extract & remove the subcommand from the list of CLI args
+SUB_CMD=$1; shift;
+
+# parse the rest of the args as options.
+_parse_subcommand_opts $@;
 
 case "$SUB_CMD" in
     check)
@@ -154,7 +169,7 @@ case "$SUB_CMD" in
         usage;
         ;;
     \? )
-        echo "Invalid Sub-Command: -$SUB_CMD" 1>&2;
+        echo "Invalid Sub-Command: $SUB_CMD" 1>&2;
         usage;
         exit 1;
         ;;
