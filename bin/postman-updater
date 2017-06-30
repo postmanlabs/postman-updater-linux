@@ -59,7 +59,7 @@ function get_installed_version {
 
 function get_latest_version {
     __debug "Fetching the latest version from Postman's app release server";
-    LATEST_VERSION=$(curl -s 'https://dl.pstmn.io/changelog?channel=stable&platform=linux' | \
+    local LATEST_VERSION=$(curl -s 'https://dl.pstmn.io/changelog?channel=stable&platform=linux' | \
         python -c "import sys, json; print(json.load(sys.stdin)['changelog'][0]['name'])");
     __debug "Latest version is: " ${LATEST_VERSION};
     echo ${LATEST_VERSION};
@@ -94,8 +94,13 @@ function install_postman {
     local ARCH=$(get_current_arch);
     local TMP_DIR="/tmp/_postman_tmp";
     local TARBALL="${TMP_DIR}/postman.tar.gz";
+    local LATEST_VERSION=$(get_latest_version);
+    local LATEST_VERSION_URL="https://dl.pstmn.io/download/version/${LATEST_VERSION}/linux${ARCH}";
+
     mkdir -p ${TMP_DIR};
-    curl -o "${TARBALL}" "https://dl.pstmn.io/download/latest/linux?arch=${ARCH}";
+
+    __debug "Downloading from URL:" ${LATEST_VERSION_URL};
+    curl -o "${TARBALL}" "$LATEST_VERSION_URL";
 
     _UPD_PM_RETURN=$(pwd);
     cd ${TMP_DIR};
