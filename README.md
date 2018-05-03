@@ -17,7 +17,7 @@ to your $PATH, and make it executable. Remember to change the path, if you
 do not want to install it to `/usr/local/bin`:
 
 ```bash
-# curl -o /usr/local/bin/postman-updater https://github.com/czardoz/postman-updater-linux/blob/master/bin/postman-updater
+# curl -o /usr/local/bin/postman-updater https://raw.githubusercontent.com/postmanlabs/postman-updater-linux/master/bin/postman-updater
 # chmod +x /usr/local/bin/postman-updater
 ```
 
