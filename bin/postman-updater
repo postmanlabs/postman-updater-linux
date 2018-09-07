@@ -7,7 +7,7 @@ PYTHONIOENCODING=utf8;
 _TRUE_="true";
 _FALSE_="false";
 
-LOCATION="/opt/postman"  # Default install/update location
+LOCATION="/opt/Postman"  # Default install/update location
 VERSION="latest"  # Default to latest version
 
 function __debug {
@@ -27,7 +27,7 @@ function usage {
 
 function is_installed {
     local LOCATION=$1;
-    local PKG_JSON_LOCATION=${LOCATION}/resources/app/package.json;
+    local PKG_JSON_LOCATION=${LOCATION}/app/resources/app/package.json;
 
     __debug "Checking if Postman is already installed in location: " ${LOCATION};
 
@@ -42,7 +42,7 @@ function is_installed {
 
 function get_installed_version {
     local LOCATION=$1;
-    local PKG_JSON_LOCATION=${LOCATION}/resources/app/package.json;
+    local PKG_JSON_LOCATION=${LOCATION}/app/resources/app/package.json;
 
     __debug "Fetching version of currently installed Postman from location: " ${LOCATION};
 
