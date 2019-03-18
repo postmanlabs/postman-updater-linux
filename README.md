@@ -1,5 +1,9 @@
 # Postman Updater (for Linux)
 
+# Deprecated
+
+> You can now install Postman from the [Ubuntu snap store](https://snapcraft.io/postman), so please do that. 
+
 This is a simple bash script, which allows you to update the Postman Linux app,
 straight from the terminal.
 
